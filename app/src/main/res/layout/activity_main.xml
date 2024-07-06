@@ -37,7 +37,7 @@
         android:layout_marginTop="15dp"
         android:ems="10"
         android:inputType="text"
-        android:text="Name"
+        android:text="Email"
         app:layout_constraintStart_toEndOf="@+id/editTextText"
         app:layout_constraintTop_toTopOf="parent" />
 
