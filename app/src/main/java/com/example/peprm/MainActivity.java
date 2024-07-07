@@ -3,9 +3,14 @@ package com.example.peprm;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
+
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
@@ -20,6 +25,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
+    private Spinner spinnerPage;
     private static final String TAG = "MainActivity";
     private RecyclerView recyclerView;
     private UsersAdapter usersAdapter;
@@ -27,12 +33,13 @@ public class MainActivity extends AppCompatActivity {
     private EditText editTextName;
     private EditText editTextEmail;
     private Button buttonSearch;
-
+    private int itemsPerPage = 3;
+    private int count = 0;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        populateSpinner();
         recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         usersAdapter = new UsersAdapter(this, userList);
@@ -51,34 +58,48 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        fetchUsers();
+
     }
 
     private void fetchUsers() {
-        ApiClient apiClient = new ApiClient();
-        ApiService apiService = apiClient.getApiService();
 
-        apiService.getUsers(2).enqueue(new Callback<UsersResponse>() {
-            @Override
-            public void onResponse(Call<UsersResponse> call, Response<UsersResponse> response) {
-                if (response.isSuccessful()) {
-                    UsersResponse usersResponse = response.body();
-                    if (usersResponse != null) {
-                        userList.addAll(usersResponse.getData());
-                        usersAdapter.updateList(userList);
-                    } else {
-                        Log.e(TAG, "UsersResponse is null");
+        boolean checkCache = false;
+        // viet code de check data co trong db
+
+        if(checkCache == true){
+            Log.i("Caching", "Is Caching");
+            // doc data tu db ròi add vao   userList
+            pagination(0, 3);
+        }else{
+            ApiClient apiClient = new ApiClient();
+            ApiService apiService = apiClient.getApiService();
+
+            apiService.getUsers(2).enqueue(new Callback<UsersResponse>() {
+                @Override
+                public void onResponse(Call<UsersResponse> call, Response<UsersResponse> response) {
+                    if (response.isSuccessful()) {
+                        UsersResponse usersResponse = response.body();
+                        if (usersResponse != null) {
+                            userList.addAll(usersResponse.getData());
+                            // lưu list vào db
+                            pagination(0, 3);
+                        }
                     }
-                } else {
-                    Log.e(TAG, "Response not successful: " + response.code());
                 }
-            }
 
-            @Override
-            public void onFailure(Call<UsersResponse> call, Throwable t) {
-                Log.e(TAG, "Request failed: " + t.getMessage(), t);
-            }
-        });
+                @Override
+                public void onFailure(Call<UsersResponse> call, Throwable t) {
+                }
+            });
+        }
+    }
+
+    private void pagination(int startIndex, int endIndex){
+        List<UsersResponse.User> list = new ArrayList<>();
+        for (int i = startIndex; i < endIndex; i++) {
+            list.add(userList.get(i));
+        }
+        usersAdapter.updateList(list);
     }
 
     private void searchUsers(String name, String email) {
@@ -107,5 +128,71 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "Search results: " + searchedList.size());
         usersAdapter.updateList(searchedList);
     }
+
+
+    private void populateSpinner() {
+        Spinner spinner = findViewById(R.id.spinner);
+
+        // Tạo danh sách dữ liệu
+        List<String> pages = new ArrayList<>();
+        pages.add("Page 1");
+        pages.add("Page 2");
+        pages.add("Page 3");
+        pages.add("Page 4");
+        pages.add("Page 5");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, pages);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                String selectedPage = parentView.getItemAtPosition(position).toString();
+                int startIndex = GetStartIndex(selectedPage, itemsPerPage);
+                int endIndex = Math.min(startIndex + itemsPerPage, userList.size());
+                if(count == 0 ){
+                    fetchUsers();
+                    count++;
+                }else{
+                    pagination(startIndex, endIndex);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+                // Không làm gì cả
+            }
+        });
+    }
+
+    private int GetStartIndex(String selectedPage, int itemPerPage){
+        int pageIndex;
+
+        switch (selectedPage)
+        {
+            case "Page 1":
+                pageIndex = 1;
+                break;
+            case "Page 2":
+                pageIndex = 2;
+                break;
+            case "Page 3":
+                pageIndex = 3;
+                break;
+            case "Page 4":
+                pageIndex = 4;
+                break;
+            case "Page 5":
+                pageIndex = 5;
+                break;
+            default:
+                pageIndex = 1;
+                break;
+        }
+
+        return (pageIndex - 1) * itemPerPage;
+    }
+
 }
 
