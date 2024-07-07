@@ -65,9 +65,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 databaseHelper.clearCache();
-                userList.clear();
-                usersAdapter.updateList(new ArrayList<>());
-                fetchUsers();
             }
         });
 
@@ -76,12 +73,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void fetchUsers() {
         if (databaseHelper.isCacheAvailable()) {
-            Log.i(TAG, "Loading data from cache");
+            Log.i("Caching", "Loading data from cache");
             userList.clear();
             userList.addAll(databaseHelper.getAllUsers());
             pagination(0, itemsPerPage);
         } else {
-            Log.i(TAG, "Fetching data from API");
+            Log.i("Caching", "Fetching data from API");
             ApiClient apiClient = new ApiClient();
             ApiService apiService = apiClient.getApiService();
 

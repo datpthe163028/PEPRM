@@ -40,14 +40,16 @@ public class UsersAdapter extends RecyclerView.Adapter<UserViewHolder> {
     public void onBindViewHolder(@NonNull UserViewHolder holder, int position) {
         UsersResponse.User user = userList.get(position);
         holder.textViewName.setText(user.getFirstName() + " " + user.getLastName());
-        holder.textViewEmail.setText(user.getEmail());
         Glide.with(context).load(user.getAvatar()).into(holder.imageViewAvatar);
         holder.b1.setId(user.getId());
         holder.b1.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent intent = new Intent(context, DetailUserActivity.class);
-                intent.putExtra("USER_ID", user.getId());
+                intent.putExtra("USER_EMAIL", user.getEmail());
+                intent.putExtra("USER_FIRST_NAME", user.getFirstName());
+                intent.putExtra("USER_LAST_NAME", user.getLastName());
+                intent.putExtra("USER_AVATAR", user.getAvatar());
                 context.startActivity(intent);
             }
         });
