@@ -35,10 +35,13 @@ public class MainActivity extends AppCompatActivity {
     private Button buttonSearch;
     private int itemsPerPage = 3;
     private int count = 0;
+    private DatabaseHelper databaseHelper;
+    private Button buttonDeleteCache;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        databaseHelper = new DatabaseHelper(this);
         populateSpinner();
         recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -48,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
         editTextName = findViewById(R.id.editTextText);
         editTextEmail = findViewById(R.id.editTextText2);
         buttonSearch = findViewById(R.id.button);
+        buttonDeleteCache = findViewById(R.id.button2);
 
         buttonSearch.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -57,20 +61,27 @@ public class MainActivity extends AppCompatActivity {
                 searchUsers(name, email);
             }
         });
+        buttonDeleteCache.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                databaseHelper.clearCache();
+                userList.clear();
+                usersAdapter.updateList(new ArrayList<>());
+                fetchUsers();
+            }
+        });
 
 
     }
 
     private void fetchUsers() {
-
-        boolean checkCache = false;
-        // viet code de check data co trong db
-
-        if(checkCache == true){
-            Log.i("Caching", "Is Caching");
-            // doc data tu db ròi add vao   userList
-            pagination(0, 3);
-        }else{
+        if (databaseHelper.isCacheAvailable()) {
+            Log.i(TAG, "Loading data from cache");
+            userList.clear();
+            userList.addAll(databaseHelper.getAllUsers());
+            pagination(0, itemsPerPage);
+        } else {
+            Log.i(TAG, "Fetching data from API");
             ApiClient apiClient = new ApiClient();
             ApiService apiService = apiClient.getApiService();
 
@@ -81,14 +92,17 @@ public class MainActivity extends AppCompatActivity {
                         UsersResponse usersResponse = response.body();
                         if (usersResponse != null) {
                             userList.addAll(usersResponse.getData());
-                            // lưu list vào db
-                            pagination(0, 3);
+                            for (UsersResponse.User user : usersResponse.getData()) {
+                                databaseHelper.addUser(user);
+                            }
+                            pagination(0, itemsPerPage);
                         }
                     }
                 }
 
                 @Override
                 public void onFailure(Call<UsersResponse> call, Throwable t) {
+                    Log.e(TAG, "API call failed: " + t.getMessage());
                 }
             });
         }
