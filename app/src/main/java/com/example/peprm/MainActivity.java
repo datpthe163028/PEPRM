@@ -33,16 +33,18 @@ public class MainActivity extends AppCompatActivity {
     private EditText editTextName;
     private EditText editTextEmail;
     private Button buttonSearch;
-    private int itemsPerPage = 3;
+    private int itemsPerPage = 2;
     private int count = 0;
     private DatabaseHelper databaseHelper;
     private Button buttonDeleteCache;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         databaseHelper = new DatabaseHelper(this);
-        populateSpinner();
+        fetchUsers();
+
         recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         usersAdapter = new UsersAdapter(this, userList);
@@ -67,8 +69,6 @@ public class MainActivity extends AppCompatActivity {
                 databaseHelper.clearCache();
             }
         });
-
-
     }
 
     private void fetchUsers() {
@@ -76,7 +76,8 @@ public class MainActivity extends AppCompatActivity {
             Log.i("Caching", "Loading data from cache");
             userList.clear();
             userList.addAll(databaseHelper.getAllUsers());
-            pagination(0, itemsPerPage);
+            populateSpinner((int)Math.ceil((double) userList.size() / itemsPerPage))
+            ;
         } else {
             Log.i("Caching", "Fetching data from API");
             ApiClient apiClient = new ApiClient();
@@ -89,10 +90,12 @@ public class MainActivity extends AppCompatActivity {
                         UsersResponse usersResponse = response.body();
                         if (usersResponse != null) {
                             userList.addAll(usersResponse.getData());
+
                             for (UsersResponse.User user : usersResponse.getData()) {
                                 databaseHelper.addUser(user);
                             }
-                            pagination(0, itemsPerPage);
+
+                            populateSpinner((int)Math.ceil((double) userList.size() / itemsPerPage));
                         }
                     }
                 }
@@ -112,6 +115,36 @@ public class MainActivity extends AppCompatActivity {
         }
         usersAdapter.updateList(list);
     }
+
+
+    private void populateSpinner(int countPage) {
+        Spinner spinner = findViewById(R.id.spinner);
+        List<String> pages = new ArrayList<>();
+
+        for(int i = 1; i <= countPage; i++)
+            pages.add(i + "");
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, pages);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+                String selectedPage = parentView.getItemAtPosition(position).toString();
+                int startIndex = (Integer.parseInt(selectedPage) - 1 ) * itemsPerPage;
+                int endIndex = Math.min(startIndex + itemsPerPage, userList.size());
+                pagination(startIndex, endIndex);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parentView) {
+                // Không làm gì cả
+            }
+        });
+    }
+
+
 
     private void searchUsers(String name, String email) {
         Log.d(TAG, "Search called with name: " + name + ", email: " + email);
@@ -141,69 +174,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private void populateSpinner() {
-        Spinner spinner = findViewById(R.id.spinner);
-
-        // Tạo danh sách dữ liệu
-        List<String> pages = new ArrayList<>();
-        pages.add("Page 1");
-        pages.add("Page 2");
-        pages.add("Page 3");
-        pages.add("Page 4");
-        pages.add("Page 5");
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, pages);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-
-        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
-                String selectedPage = parentView.getItemAtPosition(position).toString();
-                int startIndex = GetStartIndex(selectedPage, itemsPerPage);
-                int endIndex = Math.min(startIndex + itemsPerPage, userList.size());
-                if(count == 0 ){
-                    fetchUsers();
-                    count++;
-                }else{
-                    pagination(startIndex, endIndex);
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parentView) {
-                // Không làm gì cả
-            }
-        });
-    }
-
-    private int GetStartIndex(String selectedPage, int itemPerPage){
-        int pageIndex;
-
-        switch (selectedPage)
-        {
-            case "Page 1":
-                pageIndex = 1;
-                break;
-            case "Page 2":
-                pageIndex = 2;
-                break;
-            case "Page 3":
-                pageIndex = 3;
-                break;
-            case "Page 4":
-                pageIndex = 4;
-                break;
-            case "Page 5":
-                pageIndex = 5;
-                break;
-            default:
-                pageIndex = 1;
-                break;
-        }
-
-        return (pageIndex - 1) * itemPerPage;
-    }
 
 }
 
